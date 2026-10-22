@@ -1,0 +1,16 @@
+{
+  "name": "cosmos-mcp",
+  "version": "1.0.0",
+  "description": "MCP server that lets Claude search cosmos.so for motion graphics and visual references",
+  "type": "module",
+  "main": "server.js",
+  "bin": { "cosmos-mcp": "server.js" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.25.0"
+  }
+}
