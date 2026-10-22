@@ -1,11 +1,39 @@
-// Starts the server over stdio, like Claude does, and runs a few live searches.
+// Connects to the server like Claude does and runs a few live searches.
+//   node test.js                 → local version over stdio (Claude Code, desktop app)
+//   node test.js http            → web version, served from api/mcp.js on a local port
+//   node test.js https://…/mcp   → a deployed web version
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import assert from "node:assert/strict";
+import http from "node:http";
 import { fileURLToPath } from "node:url";
 
+const mode = process.argv[2];
+let transport;
+let localServer;
+if (!mode) {
+  transport = new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL("./server.js", import.meta.url))] });
+} else if (mode === "http") {
+  // Small Node → Web Request bridge, standing in for Vercel.
+  const { handle } = await import("./api/mcp.js");
+  localServer = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const body = chunks.length ? Buffer.concat(chunks) : undefined;
+    const response = await handle(new Request(`http://localhost${req.url}`, { method: req.method, headers: req.headers, body }));
+    res.writeHead(response.status, Object.fromEntries(response.headers));
+    res.end(Buffer.from(await response.arrayBuffer()));
+  });
+  await new Promise((r) => localServer.listen(0, r));
+  transport = new StreamableHTTPClientTransport(new URL(`http://localhost:${localServer.address().port}/mcp`));
+} else {
+  transport = new StreamableHTTPClientTransport(new URL(mode));
+}
+console.log(`testing: ${mode || "stdio"}`);
+
 const client = new Client({ name: "test", version: "1.0.0" });
-await client.connect(new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL("./server.js", import.meta.url))] }));
+await client.connect(transport);
 
 const { tools } = await client.listTools();
 assert.deepEqual(tools.map((t) => t.name), ["search_cosmos"]);
@@ -43,4 +71,5 @@ assert.ok(bad.isError);
 console.log("limit 99 rejected");
 
 await client.close();
+localServer?.close();
 console.log("ALL PASSED");

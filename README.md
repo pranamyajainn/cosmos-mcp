@@ -67,6 +67,29 @@ claude mcp add cosmos --scope user -- node /ABSOLUTE/PATH/TO/cosmos-mcp/server.j
 
 3. Quit Claude fully and open it again.
 
+### Connect to the Claude web app (claude.ai)
+
+The web app can only use a server on a public `https://` URL. This repo deploys to Vercel as-is.
+
+Flow: claude.ai → `https://<your-app>.vercel.app/mcp` → `api/mcp.js` → Cosmos.
+
+1. Deploy:
+
+   ```bash
+   vercel deploy --prod
+   ```
+
+2. Check the live URL. You must see `ALL PASSED`:
+
+   ```bash
+   node test.js https://<your-app>.vercel.app/mcp
+   ```
+
+3. In claude.ai, open Settings → Connectors → Add custom connector. Enter the name `Cosmos` and the URL `https://<your-app>.vercel.app/mcp`. Leave the auth fields empty.
+4. In a chat, open the tools menu and turn on Cosmos.
+
+The web URL has no login. Anyone with the URL can run Cosmos searches through it. It only reads public Cosmos results and holds no keys.
+
 ## How to ask
 
 - "Find me 5 kinetic typography loops on Cosmos, black and white, for a product launch reel."
@@ -84,6 +107,8 @@ Claude does better when it runs 2 or 3 different phrasings and compares the prev
 
 ## Files
 
-- `server.js`: the MCP server and the `search_cosmos` tool.
+- `tools.js`: the `search_cosmos` tool. Both versions use it.
+- `server.js`: local version (stdio), for Claude Code and the desktop app.
+- `api/mcp.js`: web version (HTTP), for claude.ai. Vercel serves it at `/mcp` (see `vercel.json`).
 - `cosmos.js`: the Cosmos query and result clean-up.
-- `test.js`: end-to-end test. It starts the server like Claude does and runs live searches.
+- `test.js`: end-to-end test with live searches. `node test.js` checks the local version, `node test.js http` checks the web version on your Mac, and `node test.js <url>` checks a deployed URL.
